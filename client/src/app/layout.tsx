@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+
+import Header from "@/components/Header";
+import { AuthProvider } from "@/context/AuthContext";
+
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["cyrillic", "latin"],
-  variable: "--font-inter",
-});
-
 export const metadata: Metadata = {
-  title: "Уют — бронирование недвижимости",
-  description: "Поиск и бронирование жилья",
+  title: "Уют",
+  description: "Бронирование недвижимости",
 };
 
 export default function RootLayout({
@@ -19,7 +17,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={inter.variable}>{children}</body>
+      <body>
+        <AuthProvider>
+          <Header />
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }
