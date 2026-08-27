@@ -209,6 +209,24 @@ export default function ListingForm({
     }));
   }
 
+  // Обложка — это просто первая фотография в списке, поэтому «сделать обложкой»
+  // означает переставить её в начало, сохранив порядок остальных.
+  function makeCover(index: number) {
+    if (index === 0) {
+      return;
+    }
+
+    setForm((prev) => {
+      const next = [...prev.photos];
+      const [chosen] = next.splice(index, 1);
+
+      return {
+        ...prev,
+        photos: [chosen, ...next],
+      };
+    });
+  }
+
   async function addFiles(files: FileList) {
     const { photos, errors } =
       await filesToPhotos(
@@ -720,7 +738,9 @@ export default function ListingForm({
 
               <span className="text-[13px] text-[var(--uyut-muted)]">
                 JPG или PNG. Минимум три
-                фотографии, первая станет обложкой
+                фотографии. Обложкой станет
+                первая — нажмите на любую другую,
+                чтобы поменять
               </span>
             </button>
 
@@ -762,7 +782,12 @@ export default function ListingForm({
                   (photo, index) => (
                     <div
                       key={photo.slice(-40) + index}
-                      className="relative h-[120px] w-[160px] overflow-hidden rounded-[10px] bg-[var(--uyut-image)]"
+                      className={[
+                        "relative h-[120px] w-[160px] overflow-hidden rounded-[10px] bg-[var(--uyut-image)]",
+                        index === 0
+                          ? "ring-2 ring-[#2a6f5b]"
+                          : "",
+                      ].join(" ")}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -770,6 +795,22 @@ export default function ListingForm({
                         alt=""
                         className="h-full w-full object-cover"
                       />
+
+                      {index !== 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            makeCover(index)
+                          }
+                          aria-label={`Сделать обложкой фото ${index + 1}`}
+                          title="Сделать обложкой"
+                          className="absolute inset-0 flex cursor-pointer items-end justify-center pb-2 text-[11px] font-medium text-white transition-colors hover:bg-black/25"
+                        >
+                          <span className="rounded-[8px] bg-black/55 px-2 py-1">
+                            Сделать обложкой
+                          </span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -783,7 +824,7 @@ export default function ListingForm({
                             ),
                           )
                         }
-                        className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-white text-[12px] text-[#1c1b19] shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
+                        className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full bg-white text-[12px] text-[#1c1b19] shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
                       >
                         ✕
                       </button>
