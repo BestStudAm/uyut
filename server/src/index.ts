@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRouter from "./routes/auth.js";
+import listingsRouter from "./routes/listings.js";
 
 const app = express();
 
@@ -23,6 +24,11 @@ app.get("/api/health", (_req, res) => {
 app.use(
   "/api/auth",
   authRouter,
+);
+
+app.use(
+  "/api/listings",
+  listingsRouter,
 );
 
 app.listen(PORT, () => {
