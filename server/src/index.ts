@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRouter from "./routes/auth.js";
 import listingsRouter from "./routes/listings.js";
+import myListingsRouter from "./routes/myListings.js";
 
 const app = express();
 
@@ -13,7 +14,9 @@ app.use(
   }),
 );
 
-app.use(express.json());
+// Лимит по умолчанию 100 КБ, а объявление приезжает вместе с фотографиями
+// в виде data:image — иначе публикация падает с 413.
+app.use(express.json({ limit: "12mb" }));
 
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -29,6 +32,11 @@ app.use(
 app.use(
   "/api/listings",
   listingsRouter,
+);
+
+app.use(
+  "/api/my/listings",
+  myListingsRouter,
 );
 
 app.listen(PORT, () => {

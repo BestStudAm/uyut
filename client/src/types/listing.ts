@@ -16,6 +16,11 @@ export type Amenity =
   | "ac"
   | "pets";
 
+export type ListingStatus =
+  | "published"
+  | "draft"
+  | "hidden";
+
 export interface Listing {
   id: number;
   title: string;
@@ -31,7 +36,12 @@ export interface Listing {
   amenities: Amenity[];
   lat: number;
   lng: number;
-  image?: string;
+  status: ListingStatus;
+  photos: string[];
+  description: string;
+  rules: string[];
+  address: string;
+  ownerId?: number;
 }
 
 export interface ListingsResponse {
@@ -40,6 +50,15 @@ export interface ListingsResponse {
   page: number;
   limit: number;
 }
+
+export const listingStatusLabels: Record<
+  ListingStatus,
+  string
+> = {
+  published: "Опубликовано",
+  draft: "Черновик",
+  hidden: "Снято",
+};
 
 export const housingTypeLabels: Record<
   HousingType,

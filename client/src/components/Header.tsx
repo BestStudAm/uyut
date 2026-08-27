@@ -95,6 +95,13 @@ export default function Header() {
           </Link>
 
           <Link
+            href="/my-listings"
+            className="text-[14px] font-medium leading-5 text-[#1c1b19] no-underline transition-colors hover:text-[#2a6f5b]"
+          >
+            Мои объявления
+          </Link>
+
+          <Link
             href="/login"
             className="no-underline"
           >
@@ -180,6 +187,16 @@ export default function Header() {
               className="rounded-[10px] px-3 py-3 text-[15px] font-medium text-[#1c1b19] no-underline hover:bg-[#f7f5f2]"
             >
               Мои бронирования
+            </Link>
+
+            <Link
+              href="/my-listings"
+              onClick={() =>
+                setMobileMenuOpen(false)
+              }
+              className="rounded-[10px] px-3 py-3 text-[15px] font-medium text-[#1c1b19] no-underline hover:bg-[#f7f5f2]"
+            >
+              Мои объявления
             </Link>
 
             <Link

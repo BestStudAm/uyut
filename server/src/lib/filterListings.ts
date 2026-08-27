@@ -30,6 +30,11 @@ function matches(
   listing: Listing,
   query: CatalogQuery,
 ) {
+  // Черновики и снятые с публикации в каталог не попадают ни при каких фильтрах.
+  if (listing.status !== "published") {
+    return false;
+  }
+
   if (
     query.city &&
     listing.city !== query.city

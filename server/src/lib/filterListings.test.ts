@@ -24,6 +24,11 @@ function make(
     amenities: ["wifi"],
     lat: 59.93,
     lng: 30.35,
+    status: "published",
+    photos: [],
+    description: "",
+    rules: [],
+    address: "",
     ...overrides,
   };
 }
@@ -136,5 +141,18 @@ describe("фильтрация каталога", () => {
     expect(page2.total).toBe(25);
     expect(page2.items).toHaveLength(10);
     expect(page2.items[0].id).toBe(11);
+  });
+
+  it("не пускает в каталог черновики и снятые с публикации", () => {
+    const source = [
+      make(1),
+      make(2, { status: "draft" }),
+      make(3, { status: "hidden" }),
+    ];
+
+    const result = filterListings(source, {});
+
+    expect(result.total).toBe(1);
+    expect(result.items[0].id).toBe(1);
   });
 });

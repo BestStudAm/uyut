@@ -16,6 +16,13 @@ export type Amenity =
   | "ac"
   | "pets";
 
+// published — видно в каталоге, draft — черновик владельца,
+// hidden — снято с публикации, но брони по нему остаются.
+export type ListingStatus =
+  | "published"
+  | "draft"
+  | "hidden";
+
 export interface Listing {
   id: number;
   title: string;
@@ -31,6 +38,14 @@ export interface Listing {
   amenities: Amenity[];
   lat: number;
   lng: number;
+  status: ListingStatus;
+  // Фотографии храним строками data:image — базы нет, файлы класть некуда.
+  photos: string[];
+  description: string;
+  rules: string[];
+  address: string;
+  // Кто разместил. У тестовых объявлений владельца нет.
+  ownerId?: number;
 }
 
 // Колонки: название, район, тип, цена, рейтинг, отзывы, гости, комнаты, площадь, удобства, широта, долгота
@@ -108,11 +123,128 @@ export const listings: Listing[] = rows.map(
     amenities: row[9],
     lat: row[10],
     lng: row[11],
+    status: "published",
+    photos: [],
+    description:
+      "Светлая квартира в хорошем районе. Рядом метро, магазины и парк.",
+    rules: [
+      "Заезд после 14:00, выезд до 12:00",
+      "Не курить в квартире",
+    ],
+    address: "адрес уточняется после брони",
+    ownerId: undefined,
   }),
 );
+
+// Пара объявлений закреплена за тестовым пользователем, чтобы «Мои объявления»
+// не открывались пустыми на демонстрации. Логин: artem@example.com / 12345678.
+const DEMO_OWNER_ID = 1;
+
+for (const id of [1, 4]) {
+  const listing = listings.find(
+    (item) => item.id === id,
+  );
+
+  if (listing) {
+    listing.ownerId = DEMO_OWNER_ID;
+  }
+}
+
+let nextId =
+  listings.reduce(
+    (max, listing) =>
+      Math.max(max, listing.id),
+    0,
+  ) + 1;
+
+listings.push({
+  id: nextId++,
+  title: "Двушка у парка Победы",
+  city: "Санкт-Петербург",
+  district: "Московский",
+  type: "apartment",
+  pricePerNight: 0,
+  rating: 0,
+  reviewsCount: 0,
+  guests: 4,
+  rooms: 2,
+  area: 58,
+  amenities: ["wifi", "kitchen"],
+  lat: 59.8664,
+  lng: 30.3221,
+  status: "draft",
+  photos: [],
+  description: "",
+  rules: [],
+  address: "",
+  ownerId: DEMO_OWNER_ID,
+});
 
 export function findListingById(id: number) {
   return listings.find(
     (listing) => listing.id === id,
   );
+}
+
+export function findListingsByOwner(
+  ownerId: number,
+) {
+  return listings.filter(
+    (listing) => listing.ownerId === ownerId,
+  );
+}
+
+export type NewListing = Omit<
+  Listing,
+  "id" | "rating" | "reviewsCount" | "ownerId"
+>;
+
+export function createListing(
+  input: NewListing,
+  ownerId: number,
+): Listing {
+  const listing: Listing = {
+    ...input,
+    id: nextId++,
+    rating: 0,
+    reviewsCount: 0,
+    ownerId,
+  };
+
+  listings.push(listing);
+
+  return listing;
+}
+
+export function updateListing(
+  id: number,
+  patch: Partial<Listing>,
+) {
+  const listing = findListingById(id);
+
+  if (!listing) {
+    return undefined;
+  }
+
+  // id и владельца через правку не меняем никогда.
+  const { id: _id, ownerId: _ownerId, ...rest } =
+    patch;
+
+  Object.assign(listing, rest);
+
+  return listing;
+}
+
+export function deleteListing(id: number) {
+  const index = listings.findIndex(
+    (listing) => listing.id === id,
+  );
+
+  if (index === -1) {
+    return false;
+  }
+
+  listings.splice(index, 1);
+
+  return true;
 }

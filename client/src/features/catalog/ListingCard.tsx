@@ -45,7 +45,17 @@ export default function ListingCard({
           href={`/listing/${listing.id}`}
           className="block"
         >
-          <div className="aspect-[3/2] w-full overflow-hidden rounded-[12px] bg-[var(--uyut-image)]" />
+          <div className="aspect-[3/2] w-full overflow-hidden rounded-[12px] bg-[var(--uyut-image)]">
+            {listing.photos?.[0] && (
+              // Фото приходит строкой data:image от владельца, next/image тут не применить.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={listing.photos[0]}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
         </Link>
 
         {action && (
