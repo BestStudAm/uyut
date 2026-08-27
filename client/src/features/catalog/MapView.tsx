@@ -15,6 +15,7 @@ interface MapViewProps {
   listings: Listing[];
   hoveredId: number | null;
   onHover: (id: number | null) => void;
+  onSelect: (id: number) => void;
 }
 
 // Leaflet трогает window прямо при импорте, поэтому подгружаем его внутри эффекта,
@@ -37,13 +38,14 @@ function pinHtml(
     active
       ? "bg-[#2a6f5b] text-white"
       : "bg-white text-[#1c1b19]"
-  } inline-flex h-[34px] items-center rounded-[20px] px-3.5 text-[13px] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.16)] whitespace-nowrap">${label}</span>`;
+  } inline-flex h-[34px] cursor-pointer items-center rounded-[20px] px-3.5 text-[13px] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.16)] whitespace-nowrap">${label}</span>`;
 }
 
 export default function MapView({
   listings,
   hoveredId,
   onHover,
+  onSelect,
 }: MapViewProps) {
   const containerRef =
     useRef<HTMLDivElement>(null);
@@ -164,6 +166,9 @@ export default function MapView({
       marker.on("mouseout", () =>
         onHover(null),
       );
+      marker.on("click", () =>
+        onSelect(listing.id),
+      );
 
       markersRef.current.set(
         listing.id,
@@ -180,7 +185,7 @@ export default function MapView({
         { padding: [48, 48], maxZoom: 14 },
       );
     }
-  }, [listings, ready, makeIcon, onHover]);
+  }, [listings, ready, makeIcon, onHover, onSelect]);
 
   // Подсветка метки при наведении на карточку в списке.
   useEffect(() => {

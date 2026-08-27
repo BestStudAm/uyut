@@ -27,6 +27,8 @@ export default function ListingCard({
 }: ListingCardProps) {
   return (
     <article
+      // По этому id карта находит карточку, когда кликают по метке с ценой.
+      id={`listing-${listing.id}`}
       onMouseEnter={() =>
         onHover?.(listing.id)
       }

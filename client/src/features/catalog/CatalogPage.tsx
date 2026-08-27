@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 import Modal from "@/components/Modal";
 import { apiGet } from "@/lib/api";
@@ -90,6 +94,8 @@ export default function CatalogPage() {
   const [hoveredId, setHoveredId] = useState<
     number | null
   >(null);
+  const [selectedId, setSelectedId] =
+    useState<number | null>(null);
   const [view, setView] = useState<
     "list" | "map"
   >("list");
@@ -147,6 +153,26 @@ export default function CatalogPage() {
 
     return () => controller.abort();
   }, [query, reloadKey]);
+
+  // Наведение важнее выбора: пока мышь на карточке, подсвечена именно она.
+  const activeId = hoveredId ?? selectedId;
+
+  // Клик по метке с ценой прокручивает список к нужному объявлению.
+  const handleSelect = useCallback((id: number) => {
+    setSelectedId(id);
+    // На телефоне список мог быть спрятан за картой — возвращаем его.
+    setView("list");
+
+    // Ждём, пока React отрисует список, иначе элемента ещё нет в DOM.
+    setTimeout(() => {
+      document
+        .getElementById(`listing-${id}`)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+    }, 0);
+  }, []);
 
   const activeFilters =
     countActiveFilters(filters);
@@ -220,7 +246,7 @@ export default function CatalogPage() {
             total={total}
             loading={loading}
             error={currentError}
-            hoveredId={hoveredId}
+            hoveredId={activeId}
             onHover={setHoveredId}
             onRetry={() => {
               setError(null);
@@ -266,8 +292,9 @@ export default function CatalogPage() {
       >
         <MapView
           listings={items}
-          hoveredId={hoveredId}
+          hoveredId={activeId}
           onHover={setHoveredId}
+          onSelect={handleSelect}
         />
       </div>
 
