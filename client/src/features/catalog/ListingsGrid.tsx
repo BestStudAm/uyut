@@ -5,6 +5,7 @@ import type { Listing } from "@/types/listing";
 
 import ListingCard from "./ListingCard";
 import ListingCardSkeleton from "./ListingCardSkeleton";
+import FavoriteButton from "@/components/FavoriteButton";
 
 interface ListingsGridProps {
   listings: Listing[];
@@ -101,6 +102,11 @@ export default function ListingsGrid({
           <ListingCard
             key={listing.id}
             listing={listing}
+            action={
+              <FavoriteButton
+                listingId={listing.id}
+              />
+            }
             highlighted={
               hoveredId === listing.id
             }

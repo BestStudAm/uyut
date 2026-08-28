@@ -9,7 +9,7 @@ import bcrypt from "bcryptjs";
 import {
   findUserByEmail,
   createUser,
-} from "../db.js";
+} from "../data/users.js";
 
 const router = Router();
 
@@ -23,17 +23,27 @@ router.post(
       const { email, password } =
         req.body;
 
-      // Проверяем, что данные пришли
-      if (!email || !password) {
+      // Проверяем обязательные поля.
+      if (
+        typeof email !== "string" ||
+        typeof password !== "string" ||
+        !email.trim() ||
+        !password
+      ) {
         return res.status(400).json({
           message:
             "Введите почту и пароль",
         });
       }
 
-      // Ищем пользователя
+      const normalizedEmail =
+        email.trim();
+
+      // Ищем пользователя в SQLite.
       const user =
-        findUserByEmail(email);
+        findUserByEmail(
+          normalizedEmail,
+        );
 
       if (!user) {
         return res.status(401).json({
@@ -42,7 +52,7 @@ router.post(
         });
       }
 
-      // Проверяем пароль
+      // Проверяем пароль.
       const passwordValid =
         await bcrypt.compare(
           password,
@@ -56,7 +66,7 @@ router.post(
         });
       }
 
-      // Успешная авторизация
+      // Успешная авторизация.
       return res.json({
         user: {
           id: user.id,
@@ -90,10 +100,13 @@ router.post(
         password,
       } = req.body;
 
-      // Проверяем обязательные поля
+      // Проверяем типы и обязательные поля.
       if (
-        !name ||
-        !email ||
+        typeof name !== "string" ||
+        typeof email !== "string" ||
+        typeof password !== "string" ||
+        !name.trim() ||
+        !email.trim() ||
         !password
       ) {
         return res.status(400).json({
@@ -102,7 +115,13 @@ router.post(
         });
       }
 
-      // Проверяем длину пароля
+      const normalizedName =
+        name.trim();
+
+      const normalizedEmail =
+        email.trim();
+
+      // Проверяем длину пароля.
       if (password.length < 8) {
         return res.status(400).json({
           message:
@@ -110,9 +129,12 @@ router.post(
         });
       }
 
-      // Проверяем, существует ли пользователь
+      // Проверяем существование пользователя
+      // в SQLite.
       const existingUser =
-        findUserByEmail(email);
+        findUserByEmail(
+          normalizedEmail,
+        );
 
       if (existingUser) {
         return res.status(409).json({
@@ -121,19 +143,43 @@ router.post(
         });
       }
 
-      // Хешируем пароль
+      // Хешируем пароль.
       const passwordHash =
         await bcrypt.hash(
           password,
           10,
         );
 
-      // Создаём пользователя
-      const user = createUser(
-        name.trim(),
-        email.trim(),
-        passwordHash,
-      );
+      let user;
+
+      try {
+        // Создаём пользователя в SQLite.
+        user = createUser(
+          normalizedName,
+          normalizedEmail,
+          passwordHash,
+        );
+      } catch (error) {
+        /*
+         * Даже если два запроса на регистрацию
+         * одновременно пришли с одной почтой,
+         * UNIQUE в SQLite не позволит создать
+         * второго пользователя.
+         */
+        if (
+          error instanceof Error &&
+          error.message.includes(
+            "UNIQUE constraint failed",
+          )
+        ) {
+          return res.status(409).json({
+            message:
+              "Пользователь с такой почтой уже существует",
+          });
+        }
+
+        throw error;
+      }
 
       return res.status(201).json({
         user: {

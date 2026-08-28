@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 import { plural } from "@/lib/plural";
 import type { Listing } from "@/types/listing";
 
+import FavoriteButton from "@/components/FavoriteButton";
+
 interface ListingCardProps {
   listing: Listing;
   // Кнопка «в избранное» приходит снаружи: избранное — зона Амира,
@@ -60,7 +62,9 @@ export default function ListingCard({
 
         {action && (
           <div className="absolute right-3 top-3">
-            {action}
+            <FavoriteButton
+              listingId={listing.id}
+            />
           </div>
         )}
       </div>
