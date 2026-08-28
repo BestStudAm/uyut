@@ -1,14 +1,14 @@
 import ProtectedRoute from "@/components/ProtectedRoute";
-import MyListingsPage from "@/features/owner/MyListingsPage";
+import FavoritesPage from "@/features/account/FavoritesPage";
 
 export const metadata = {
-  title: "Мои объявления — Уют",
+  title: "Избранное — Уют",
 };
 
 export default function Page() {
   return (
     <ProtectedRoute>
-      <MyListingsPage />
+      <FavoritesPage />
     </ProtectedRoute>
   );
 }

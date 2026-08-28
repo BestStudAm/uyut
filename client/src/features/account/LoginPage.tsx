@@ -1,15 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import Button from "@/components/Button";
 import Input from "@/components/Input";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<
-    "login" | "register"
-  >("login");
+  const router = useRouter();
+
+  const [mode, setMode] = useState<"login" | "register">("login");
+
+  function goToCatalog() {
+    router.replace("/");
+  }
 
   return (
     <main className="min-h-[calc(100vh-72px)] bg-[#f7f5f2] px-4 py-12">
@@ -45,9 +50,9 @@ export default function LoginPage() {
           </div>
 
           {mode === "login" ? (
-            <LoginForm />
+            <LoginForm onSuccess={goToCatalog} />
           ) : (
-            <RegisterForm />
+            <RegisterForm onSuccess={goToCatalog} />
           )}
         </div>
       </div>
@@ -59,19 +64,20 @@ export default function LoginPage() {
    ВХОД
 ========================= */
 
-function LoginForm() {
+function LoginForm({
+  onSuccess,
+}: {
+  onSuccess: () => void;
+}) {
   const { login } = useAuth();
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
@@ -93,21 +99,16 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      await login(
-        email.trim(),
-        password,
-      );
+      await login(email.trim(), password);
 
-      console.log(
-        "Авторизация успешна",
-      );
+      // Пользователь успешно вошёл.
+      // AuthContext уже сохранил user.
+      onSuccess();
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
       } else {
-        setError(
-          "Ошибка авторизации",
-        );
+        setError("Ошибка авторизации");
       }
     } finally {
       setIsLoading(false);
@@ -140,11 +141,7 @@ function LoginForm() {
       <Input
         id="login-password"
         name="password"
-        type={
-          showPassword
-            ? "text"
-            : "password"
-        }
+        type={showPassword ? "text" : "password"}
         label="Пароль"
         autoComplete="current-password"
         value={password}
@@ -182,9 +179,7 @@ function LoginForm() {
         fullWidth
         disabled={isLoading}
       >
-        {isLoading
-          ? "Входим..."
-          : "Войти"}
+        {isLoading ? "Входим..." : "Войти"}
       </Button>
 
       <p className="m-0 text-[14px] leading-5 text-[#6b6560]">
@@ -199,20 +194,21 @@ function LoginForm() {
    РЕГИСТРАЦИЯ
 ========================= */
 
-function RegisterForm() {
+function RegisterForm({
+  onSuccess,
+}: {
+  onSuccess: () => void;
+}) {
   const { register } = useAuth();
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
@@ -247,16 +243,14 @@ function RegisterForm() {
         password,
       );
 
-      console.log(
-        "Регистрация успешна",
-      );
+      // Регистрация одновременно авторизует пользователя.
+      // AuthContext уже сохранил user.
+      onSuccess();
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
       } else {
-        setError(
-          "Ошибка регистрации",
-        );
+        setError("Ошибка регистрации");
       }
     } finally {
       setIsLoading(false);
@@ -307,11 +301,7 @@ function RegisterForm() {
       <Input
         id="register-password"
         name="password"
-        type={
-          showPassword
-            ? "text"
-            : "password"
-        }
+        type={showPassword ? "text" : "password"}
         label="Пароль"
         placeholder="Минимум 8 символов"
         autoComplete="new-password"

@@ -1,5 +1,4 @@
-// Тестовые данные каталога. Пока без базы: массив в памяти, как и пользователи в db.ts.
-// Координаты настоящие, по районам Петербурга, иначе метки на карте лягут в одну точку.
+import { db } from "../db.js";
 
 export type HousingType =
   | "apartment"
@@ -16,8 +15,6 @@ export type Amenity =
   | "ac"
   | "pets";
 
-// published — видно в каталоге, draft — черновик владельца,
-// hidden — снято с публикации, но брони по нему остаются.
 export type ListingStatus =
   | "published"
   | "draft"
@@ -39,159 +36,157 @@ export interface Listing {
   lat: number;
   lng: number;
   status: ListingStatus;
-  // Фотографии храним строками data:image — базы нет, файлы класть некуда.
   photos: string[];
   description: string;
   rules: string[];
   address: string;
-  // Кто разместил. У тестовых объявлений владельца нет.
   ownerId?: number;
 }
 
-// Колонки: название, район, тип, цена, рейтинг, отзывы, гости, комнаты, площадь, удобства, широта, долгота
-type Row = [
-  string,
-  string,
-  HousingType,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  Amenity[],
-  number,
-  number,
-];
+interface ListingRow {
+  id: number;
+  owner_id: number | null;
+  title: string;
+  city: string;
+  district: string;
+  type: string;
+  price_per_night: number;
+  rating: number;
+  reviews_count: number;
+  guests: number;
+  rooms: number;
+  area: number;
+  amenities: string;
+  lat: number;
+  lng: number;
+  status: string;
+  photos: string;
+  description: string;
+  rules: string;
+  address: string;
+}
 
-const rows: Row[] = [
-  ["Студия с видом на канал", "Петроградский", "studio", 4200, 4.8, 126, 2, 1, 34, ["wifi", "kitchen", "washer"], 59.9628, 30.3102],
-  ["Двушка у Таврического сада", "Центральный", "apartment", 6500, 4.9, 88, 4, 2, 58, ["wifi", "kitchen", "tv", "washer"], 59.9451, 30.3745],
-  ["Светлая квартира на Ваське", "Василеостровский", "apartment", 5100, 4.6, 54, 3, 2, 47, ["wifi", "kitchen", "parking"], 59.9402, 30.2633],
-  ["Комната в мансарде", "Адмиралтейский", "room", 2800, 4.4, 31, 2, 1, 22, ["wifi", "kitchen"], 59.9214, 30.3021],
-  ["Лофт на Обводном канале", "Фрунзенский", "apartment", 7900, 4.7, 63, 5, 2, 72, ["wifi", "kitchen", "tv", "ac", "parking"], 59.8981, 30.3542],
-  ["Квартира с балконом", "Приморский", "apartment", 3600, 4.5, 47, 3, 1, 41, ["wifi", "kitchen", "washer", "pets"], 59.9881, 30.2551],
-  ["Мини-студия у метро", "Московский", "studio", 2600, 4.3, 22, 2, 1, 25, ["wifi", "kitchen"], 59.8674, 30.3203],
-  ["Апартаменты на Невском", "Центральный", "apartment", 8400, 4.9, 141, 4, 2, 65, ["wifi", "kitchen", "tv", "ac", "washer"], 59.9332, 30.3521],
-  ["Уютная студия у парка", "Выборгский", "studio", 3100, 4.4, 38, 2, 1, 29, ["wifi", "kitchen", "tv"], 60.0102, 30.3451],
-  ["Трёшка для компании", "Невский", "apartment", 9200, 4.6, 29, 6, 3, 88, ["wifi", "kitchen", "tv", "washer", "parking"], 59.8853, 30.4371],
-  ["Комната у Финляндского", "Калининский", "room", 2200, 4.1, 17, 1, 1, 18, ["wifi"], 59.9558, 30.3556],
-  ["Квартира с видом на Неву", "Василеостровский", "apartment", 7400, 4.8, 72, 4, 2, 61, ["wifi", "kitchen", "tv", "ac"], 59.9375, 30.2801],
-  ["Скандинавская студия", "Приморский", "studio", 3900, 4.7, 55, 2, 1, 33, ["wifi", "kitchen", "washer"], 59.9903, 30.2312],
-  ["Дом с террасой в Комарово", "Курортный", "house", 12500, 4.9, 34, 8, 4, 140, ["wifi", "kitchen", "parking", "pets", "tv"], 60.1902, 29.8021],
-  ["Квартира у Смольного", "Центральный", "apartment", 5800, 4.5, 41, 3, 2, 52, ["wifi", "kitchen", "washer"], 59.9481, 30.3961],
-  ["Студия в новом доме", "Московский", "studio", 3300, 4.2, 26, 2, 1, 28, ["wifi", "kitchen", "ac"], 59.8541, 30.3211],
-  ["Просторная квартира у моря", "Приморский", "apartment", 6900, 4.6, 58, 5, 3, 78, ["wifi", "kitchen", "parking", "tv"], 59.9821, 30.2151],
-  ["Комната в коммуналке", "Адмиралтейский", "room", 1900, 3.9, 12, 1, 1, 16, ["wifi", "kitchen"], 59.9251, 30.3111],
-  ["Квартира с камином", "Петроградский", "apartment", 8800, 4.9, 96, 4, 2, 69, ["wifi", "kitchen", "tv", "ac", "washer"], 59.9601, 30.3201],
-  ["Студия на Петроградке", "Петроградский", "studio", 4500, 4.6, 62, 2, 1, 31, ["wifi", "kitchen", "washer"], 59.9662, 30.2981],
-  ["Двушка у Московских ворот", "Московский", "apartment", 4700, 4.4, 35, 4, 2, 54, ["wifi", "kitchen", "tv"], 59.8912, 30.3181],
-  ["Квартира рядом с Эрмитажем", "Центральный", "apartment", 10500, 4.9, 178, 4, 2, 74, ["wifi", "kitchen", "tv", "ac", "washer", "parking"], 59.9401, 30.3141],
-  ["Тихая студия во дворе", "Выборгский", "studio", 2900, 4.3, 24, 2, 1, 26, ["wifi", "kitchen"], 60.0201, 30.3301],
-  ["Дом в Репино", "Курортный", "house", 15800, 4.8, 21, 10, 5, 180, ["wifi", "kitchen", "parking", "pets", "tv", "washer"], 60.1701, 29.8702],
-  ["Квартира у Обводного", "Фрунзенский", "apartment", 4100, 4.2, 33, 3, 2, 48, ["wifi", "kitchen", "washer"], 59.8951, 30.3401],
-  ["Студия с панорамой", "Невский", "studio", 3700, 4.5, 44, 2, 1, 30, ["wifi", "kitchen", "tv", "ac"], 59.8901, 30.4201],
-  ["Комната для одного", "Калининский", "room", 2100, 4.0, 15, 1, 1, 17, ["wifi"], 60.0021, 30.4021],
-  ["Квартира с двумя балконами", "Приморский", "apartment", 5400, 4.6, 51, 4, 2, 59, ["wifi", "kitchen", "washer", "pets"], 59.9951, 30.2401],
-  ["Апартаменты бизнес-класса", "Центральный", "apartment", 11200, 4.9, 87, 4, 2, 80, ["wifi", "kitchen", "tv", "ac", "washer", "parking"], 59.9301, 30.3601],
-  ["Студия у Технологического", "Адмиралтейский", "studio", 3400, 4.4, 39, 2, 1, 27, ["wifi", "kitchen", "washer"], 59.9151, 30.3181],
-  ["Светлая двушка", "Василеостровский", "apartment", 5600, 4.7, 66, 4, 2, 56, ["wifi", "kitchen", "tv", "washer"], 59.9451, 30.2501],
-  ["Квартира у метро Автово", "Кировский", "apartment", 3200, 4.1, 28, 3, 2, 45, ["wifi", "kitchen"], 59.8671, 30.2601],
-  ["Мансарда с окном в крыше", "Петроградский", "room", 3000, 4.5, 42, 2, 1, 24, ["wifi", "kitchen", "tv"], 59.9581, 30.3051],
-  ["Дом с баней", "Курортный", "house", 13900, 4.7, 18, 8, 4, 155, ["wifi", "kitchen", "parking", "pets"], 60.1502, 29.9201],
-  ["Студия рядом с Лаврой", "Невский", "studio", 2700, 4.2, 20, 2, 1, 23, ["wifi", "kitchen"], 59.9211, 30.3881],
-  ["Квартира на набережной Фонтанки", "Центральный", "apartment", 9600, 4.8, 103, 5, 3, 85, ["wifi", "kitchen", "tv", "ac", "washer"], 59.9271, 30.3391],
-  ["Тихая квартира у озера", "Выборгский", "apartment", 4400, 4.5, 37, 4, 2, 53, ["wifi", "kitchen", "parking", "pets"], 60.0451, 30.3201],
-  ["Студия для двоих", "Московский", "studio", 3500, 4.6, 49, 2, 1, 32, ["wifi", "kitchen", "washer", "tv"], 59.8751, 30.3251],
-  ["Комната с отдельным входом", "Кировский", "room", 2400, 4.3, 25, 2, 1, 20, ["wifi", "kitchen", "pets"], 59.8801, 30.2701],
-  ["Квартира у Ботанического сада", "Петроградский", "apartment", 6100, 4.7, 71, 4, 2, 62, ["wifi", "kitchen", "tv", "washer"], 59.9721, 30.3241],
-];
-
-export const listings: Listing[] = rows.map(
-  (row, index) => ({
-    id: index + 1,
-    title: row[0],
-    city: "Санкт-Петербург",
-    district: row[1],
-    type: row[2],
-    pricePerNight: row[3],
-    rating: row[4],
-    reviewsCount: row[5],
-    guests: row[6],
-    rooms: row[7],
-    area: row[8],
-    amenities: row[9],
-    lat: row[10],
-    lng: row[11],
-    status: "published",
-    photos: [],
-    description:
-      "Светлая квартира в хорошем районе. Рядом метро, магазины и парк.",
-    rules: [
-      "Заезд после 14:00, выезд до 12:00",
-      "Не курить в квартире",
-    ],
-    address: "адрес уточняется после брони",
-    ownerId: undefined,
-  }),
-);
-
-// Пара объявлений закреплена за тестовым пользователем, чтобы «Мои объявления»
-// не открывались пустыми на демонстрации. Логин: artem@example.com / 12345678.
-const DEMO_OWNER_ID = 1;
-
-for (const id of [1, 4]) {
-  const listing = listings.find(
-    (item) => item.id === id,
-  );
-
-  if (listing) {
-    listing.ownerId = DEMO_OWNER_ID;
+function parseJson<T>(
+  value: string,
+  fallback: T,
+): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
   }
 }
 
-let nextId =
-  listings.reduce(
-    (max, listing) =>
-      Math.max(max, listing.id),
-    0,
-  ) + 1;
+function mapListing(
+  row: ListingRow,
+): Listing {
+  return {
+    id: row.id,
+    title: row.title,
+    city: row.city,
+    district: row.district,
+    type: row.type as HousingType,
+    pricePerNight: row.price_per_night,
+    rating: row.rating,
+    reviewsCount: row.reviews_count,
+    guests: row.guests,
+    rooms: row.rooms,
+    area: row.area,
+    amenities: parseJson<Amenity[]>(
+      row.amenities,
+      [],
+    ),
+    lat: row.lat,
+    lng: row.lng,
+    status: row.status as ListingStatus,
+    photos: parseJson<string[]>(
+      row.photos,
+      [],
+    ),
+    description: row.description,
+    rules: parseJson<string[]>(
+      row.rules,
+      [],
+    ),
+    address: row.address,
+    ownerId:
+      row.owner_id ?? undefined,
+  };
+}
 
-listings.push({
-  id: nextId++,
-  title: "Двушка у парка Победы",
-  city: "Санкт-Петербург",
-  district: "Московский",
-  type: "apartment",
-  pricePerNight: 0,
-  rating: 0,
-  reviewsCount: 0,
-  guests: 4,
-  rooms: 2,
-  area: 58,
-  amenities: ["wifi", "kitchen"],
-  lat: 59.8664,
-  lng: 30.3221,
-  status: "draft",
-  photos: [],
-  description: "",
-  rules: [],
-  address: "",
-  ownerId: DEMO_OWNER_ID,
-});
+function selectFields() {
+  return `
+    id,
+    owner_id,
+    title,
+    city,
+    district,
+    type,
+    price_per_night,
+    rating,
+    reviews_count,
+    guests,
+    rooms,
+    area,
+    amenities,
+    lat,
+    lng,
+    status,
+    photos,
+    description,
+    rules,
+    address
+  `;
+}
 
-export function findListingById(id: number) {
-  return listings.find(
-    (listing) => listing.id === id,
-  );
+export function getListings(): Listing[] {
+  const rows = db
+    .prepare(
+      `
+        SELECT ${selectFields()}
+        FROM listings
+        ORDER BY id ASC
+      `,
+    )
+    .all() as ListingRow[];
+
+  return rows.map(mapListing);
+}
+
+export function findListingById(
+  id: number,
+): Listing | undefined {
+  const row = db
+    .prepare(
+      `
+        SELECT ${selectFields()}
+        FROM listings
+        WHERE id = ?
+        LIMIT 1
+      `,
+    )
+    .get(id) as ListingRow | undefined;
+
+  return row
+    ? mapListing(row)
+    : undefined;
 }
 
 export function findListingsByOwner(
   ownerId: number,
-) {
-  return listings.filter(
-    (listing) => listing.ownerId === ownerId,
-  );
+): Listing[] {
+  const rows = db
+    .prepare(
+      `
+        SELECT ${selectFields()}
+        FROM listings
+        WHERE owner_id = ?
+        ORDER BY id DESC
+      `,
+    )
+    .all(ownerId) as ListingRow[];
+
+  return rows.map(mapListing);
 }
 
 export type NewListing = Omit<
@@ -203,15 +198,84 @@ export function createListing(
   input: NewListing,
   ownerId: number,
 ): Listing {
-  const listing: Listing = {
-    ...input,
-    id: nextId++,
-    rating: 0,
-    reviewsCount: 0,
-    ownerId,
-  };
+  const result = db
+    .prepare(
+      `
+        INSERT INTO listings (
+          owner_id,
+          title,
+          city,
+          district,
+          type,
+          price_per_night,
+          rating,
+          reviews_count,
+          guests,
+          rooms,
+          area,
+          amenities,
+          lat,
+          lng,
+          status,
+          photos,
+          description,
+          rules,
+          address
+        )
+        VALUES (
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?
+        )
+      `,
+    )
+    .run(
+      ownerId,
+      input.title,
+      input.city,
+      input.district,
+      input.type,
+      input.pricePerNight,
+      0,
+      0,
+      input.guests,
+      input.rooms,
+      input.area,
+      JSON.stringify(input.amenities),
+      input.lat,
+      input.lng,
+      input.status,
+      JSON.stringify(input.photos),
+      input.description,
+      JSON.stringify(input.rules),
+      input.address,
+    );
 
-  listings.push(listing);
+  const listing = findListingById(
+    Number(result.lastInsertRowid),
+  );
+
+  if (!listing) {
+    throw new Error(
+      "Не удалось создать объявление",
+    );
+  }
 
   return listing;
 }
@@ -219,32 +283,85 @@ export function createListing(
 export function updateListing(
   id: number,
   patch: Partial<Listing>,
-) {
-  const listing = findListingById(id);
+): Listing | undefined {
+  const existing =
+    findListingById(id);
 
-  if (!listing) {
+  if (!existing) {
     return undefined;
   }
 
-  // id и владельца через правку не меняем никогда.
-  const { id: _id, ownerId: _ownerId, ...rest } =
-    patch;
+  const next: Listing = {
+    ...existing,
+    ...patch,
 
-  Object.assign(listing, rest);
+    // Нельзя изменить ID и владельца
+    // через обычное редактирование.
+    id: existing.id,
+    ownerId: existing.ownerId,
+  };
 
-  return listing;
-}
-
-export function deleteListing(id: number) {
-  const index = listings.findIndex(
-    (listing) => listing.id === id,
+  db.prepare(
+    `
+      UPDATE listings
+      SET
+        title = ?,
+        city = ?,
+        district = ?,
+        type = ?,
+        price_per_night = ?,
+        rating = ?,
+        reviews_count = ?,
+        guests = ?,
+        rooms = ?,
+        area = ?,
+        amenities = ?,
+        lat = ?,
+        lng = ?,
+        status = ?,
+        photos = ?,
+        description = ?,
+        rules = ?,
+        address = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+  ).run(
+    next.title,
+    next.city,
+    next.district,
+    next.type,
+    next.pricePerNight,
+    next.rating,
+    next.reviewsCount,
+    next.guests,
+    next.rooms,
+    next.area,
+    JSON.stringify(next.amenities),
+    next.lat,
+    next.lng,
+    next.status,
+    JSON.stringify(next.photos),
+    next.description,
+    JSON.stringify(next.rules),
+    next.address,
+    id,
   );
 
-  if (index === -1) {
-    return false;
-  }
+  return findListingById(id);
+}
 
-  listings.splice(index, 1);
+export function deleteListing(
+  id: number,
+): boolean {
+  const result = db
+    .prepare(
+      `
+        DELETE FROM listings
+        WHERE id = ?
+      `,
+    )
+    .run(id);
 
-  return true;
+  return result.changes > 0;
 }

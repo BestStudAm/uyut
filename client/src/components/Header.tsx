@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 import Button from "@/components/Button";
 
@@ -59,6 +60,9 @@ function getDateText(
 }
 
 export default function Header() {
+  const { user, isAuthenticated, logout } =
+    useAuth();
+
   const [mobileMenuOpen, setMobileMenuOpen] =
     useState(false);
 
@@ -88,7 +92,7 @@ export default function Header() {
           </Link>
 
           <Link
-            href="/bookings"
+            href="/my-bookings"
             className="text-[14px] font-medium leading-5 text-[#1c1b19] no-underline transition-colors hover:text-[#2a6f5b]"
           >
             Мои бронирования
@@ -101,17 +105,33 @@ export default function Header() {
             Мои объявления
           </Link>
 
-          <Link
-            href="/login"
-            className="no-underline"
-          >
-            <Button
-              type="button"
-              size="md"
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-[14px] font-medium text-[#1c1b19]">
+                {user?.name}
+              </span>
+
+              <button
+                type="button"
+                onClick={logout}
+                className="border-0 bg-transparent text-[14px] font-medium text-[#6b6560] transition-colors hover:text-[#2a6f5b]"
+              >
+                Выйти
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="no-underline"
             >
-              Войти
-            </Button>
-          </Link>
+              <Button
+                type="button"
+                size="md"
+              >
+                Войти
+              </Button>
+            </Link>
+          )}
         </nav>
 
         {/* Мобильная часть */}
@@ -180,7 +200,7 @@ export default function Header() {
             </Link>
 
             <Link
-              href="/bookings"
+              href="/my-bookings"
               onClick={() =>
                 setMobileMenuOpen(false)
               }
@@ -199,21 +219,40 @@ export default function Header() {
               Мои объявления
             </Link>
 
-            <Link
-              href="/login"
-              onClick={() =>
-                setMobileMenuOpen(false)
-              }
-              className="mt-2 no-underline"
-            >
-              <Button
-                type="button"
-                size="lg"
-                fullWidth
+            {isAuthenticated ? (
+              <div className="mt-2 flex items-center justify-between rounded-[10px] bg-[#f7f5f2] px-3 py-3">
+                <span className="text-[15px] font-medium text-[#1c1b19]">
+                  {user?.name}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="border-0 bg-transparent text-[14px] font-medium text-[#6b6560]"
+                >
+                  Выйти
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() =>
+                  setMobileMenuOpen(false)
+                }
+                className="mt-2 no-underline"
               >
-                Войти
-              </Button>
-            </Link>
+                <Button
+                  type="button"
+                  size="lg"
+                  fullWidth
+                >
+                  Войти
+                </Button>
+              </Link>
+            )}
           </nav>
         </div>
       )}

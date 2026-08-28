@@ -2,7 +2,7 @@ import { Router } from "express";
 
 import {
   findListingById,
-  listings,
+  getListings,
 } from "../data/listings.js";
 import {
   filterListings,
@@ -104,7 +104,12 @@ router.get("/", (req, res) => {
     limit: toNumber(req.query.limit),
   };
 
-  res.json(filterListings(listings, query));
+  res.json(
+  filterListings(
+    getListings(),
+    query,
+  ),
+);
 });
 
 router.get("/:id", (req, res) => {

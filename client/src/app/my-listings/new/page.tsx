@@ -1,3 +1,4 @@
+import ProtectedRoute from "@/components/ProtectedRoute";
 import ListingForm from "@/features/owner/ListingForm";
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <ListingForm />;
+  return (
+    <ProtectedRoute>
+      <ListingForm />
+    </ProtectedRoute>
+  );
 }

@@ -1,8 +1,14 @@
 import express from "express";
 import cors from "cors";
+
 import authRouter from "./routes/auth.js";
 import listingsRouter from "./routes/listings.js";
 import myListingsRouter from "./routes/myListings.js";
+
+import { ensureDemoUser } from "./data/users.js";
+
+import favoritesRouter from "./routes/favorites.js";
+import bookingsRouter from "./routes/bookings.js";
 
 const app = express();
 
@@ -14,15 +20,21 @@ app.use(
   }),
 );
 
-// Лимит по умолчанию 100 КБ, а объявление приезжает вместе с фотографиями
-// в виде data:image — иначе публикация падает с 413.
-app.use(express.json({ limit: "12mb" }));
+app.use(
+  express.json({
+    limit: "12mb",
+  }),
+);
 
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
   });
 });
+
+// Создаём тестового пользователя,
+// если его ещё нет в SQLite.
+ensureDemoUser();
 
 app.use(
   "/api/auth",
@@ -32,6 +44,16 @@ app.use(
 app.use(
   "/api/listings",
   listingsRouter,
+);
+
+app.use(
+  "/api/favorites",
+  favoritesRouter,
+);
+
+app.use(
+  "/api/bookings",
+  bookingsRouter,
 );
 
 app.use(
