@@ -16,6 +16,10 @@ type BookingRow = {
   check_out: string;
   guests: number;
   status: string;
+  nights: number;
+  price_per_night: number;
+  service_fee: number;
+  total: number;
   created_at: string;
 };
 
@@ -61,6 +65,39 @@ function isValidDate(
   );
 }
 
+export const SERVICE_FEE_PERCENT = 7;
+
+/** Ночи, подытог, сервисный сбор и итог. Ночей всегда минимум одна. */
+export function calcPrice(
+  checkIn: string,
+  checkOut: string,
+  pricePerNight: number,
+) {
+  const start = new Date(checkIn).getTime();
+  const end = new Date(checkOut).getTime();
+
+  const nights = Math.max(
+    1,
+    Math.round(
+      (end - start) / (1000 * 60 * 60 * 24),
+    ),
+  );
+
+  const subtotal = nights * pricePerNight;
+
+  const serviceFee = Math.round(
+    (subtotal * SERVICE_FEE_PERCENT) / 100,
+  );
+
+  return {
+    nights,
+    pricePerNight,
+    subtotal,
+    serviceFee,
+    total: subtotal + serviceFee,
+  };
+}
+
 function mapBooking(
   row: BookingRow,
 ) {
@@ -72,6 +109,10 @@ function mapBooking(
     checkOut: row.check_out,
     guests: row.guests,
     status: row.status,
+    nights: row.nights,
+    pricePerNight: row.price_per_night,
+    serviceFee: row.service_fee,
+    total: row.total,
     createdAt: row.created_at,
   };
 }
@@ -105,6 +146,10 @@ router.get(
             check_out,
             guests,
             status,
+            nights,
+            price_per_night,
+            service_fee,
+            total,
             created_at
           FROM bookings
           WHERE user_id = ?
@@ -163,6 +208,10 @@ router.get(
             check_out,
             guests,
             status,
+            nights,
+            price_per_night,
+            service_fee,
+            total,
             created_at
           FROM bookings
           WHERE id = ?
@@ -341,6 +390,14 @@ router.post(
       });
     }
 
+    // Стоимость фиксируем в самой брони: пересчитывать её потом от текущей
+    // цены объявления нельзя, иначе оформленные брони задним числом подорожают.
+    const price = calcPrice(
+      checkIn,
+      checkOut,
+      listing.pricePerNight,
+    );
+
     const result = db
       .prepare(
         `
@@ -350,9 +407,13 @@ router.post(
             check_in,
             check_out,
             guests,
-            status
+            status,
+            nights,
+            price_per_night,
+            service_fee,
+            total
           )
-          VALUES (?, ?, ?, ?, ?, 'active')
+          VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
         `,
       )
       .run(
@@ -361,6 +422,10 @@ router.post(
         checkIn,
         checkOut,
         numericGuests,
+        price.nights,
+        price.pricePerNight,
+        price.serviceFee,
+        price.total,
       );
 
     const booking = db
@@ -374,6 +439,10 @@ router.post(
             check_out,
             guests,
             status,
+            nights,
+            price_per_night,
+            service_fee,
+            total,
             created_at
           FROM bookings
           WHERE id = ?
