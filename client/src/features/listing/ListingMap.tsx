@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import "leaflet/dist/leaflet.css";
+import { loadYandexMaps } from "@/lib/yandexMaps";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface ListingMapProps {
   lat: number;
@@ -10,10 +12,6 @@ interface ListingMapProps {
   title: string;
   district: string;
 }
-
-// Leaflet обращается к window прямо при импорте, поэтому грузим его внутри
-// эффекта — иначе страница падает на серверном рендере Next.
-type LeafletMap = import("leaflet").Map;
 
 export default function ListingMap({
   lat,
@@ -23,65 +21,75 @@ export default function ListingMap({
 }: ListingMapProps) {
   const containerRef =
     useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(
-    null,
-  );
+  const mapRef = useRef<any>(null);
+
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function init() {
-      const L = (await import("leaflet"))
-        .default;
+    loadYandexMaps()
+      .then((ymaps) => {
+        if (
+          cancelled ||
+          !containerRef.current ||
+          mapRef.current
+        ) {
+          return;
+        }
 
-      if (
-        cancelled ||
-        !containerRef.current ||
-        mapRef.current
-      ) {
-        return;
-      }
-
-      const map = L.map(containerRef.current, {
-        center: [lat, lng],
-        zoom: 15,
-        zoomControl: true,
-        scrollWheelZoom: false,
-      });
-
-      L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          maxZoom: 19,
-          attribution:
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        },
-      ).addTo(map);
-
-      L.marker([lat, lng], {
-        icon: L.divIcon({
-          className: "uyut-listing-pin",
-          html: '<span class="block h-4 w-4 rounded-full border-[3px] border-white bg-[#2a6f5b] shadow-[0_0_0_2px_rgba(42,111,91,0.35)]"></span>',
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
-        }),
-      })
-        .addTo(map)
-        .bindPopup(
-          `<strong>${title}</strong><br>${district} район`,
+        const map = new ymaps.Map(
+          containerRef.current,
+          {
+            center: [lat, lng],
+            zoom: 15,
+            controls: ["zoomControl"],
+          },
+          {
+            suppressMapOpenBlock: true,
+          },
         );
 
-      mapRef.current = map;
-    }
+        // Скролл страницы важнее зума: иначе пользователь пытается пролистать
+        // карточку, а вместо этого приближает карту.
+        map.behaviors.disable("scrollZoom");
 
-    init();
+        const layout =
+          ymaps.templateLayoutFactory.createClass(
+            '<span style="display:block;width:16px;height:16px;border-radius:50%;' +
+              "background:#2a6f5b;border:3px solid #ffffff;" +
+              'box-shadow:0 0 0 2px rgba(42,111,91,0.35)"></span>',
+          );
+
+        map.geoObjects.add(
+          new ymaps.Placemark(
+            [lat, lng],
+            { hintContent: title },
+            {
+              iconLayout: layout,
+              iconShape: {
+                type: "Circle",
+                coordinates: [0, 0],
+                radius: 10,
+              },
+            },
+          ),
+        );
+
+        mapRef.current = map;
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailed(true);
+        }
+      });
 
     return () => {
       cancelled = true;
-      mapRef.current?.remove();
+      mapRef.current?.destroy();
       mapRef.current = null;
     };
-  }, [lat, lng, title, district]);
+  }, [lat, lng, title]);
 
   return (
     <div className="mt-8">
@@ -95,12 +103,18 @@ export default function ListingMap({
         подтверждения брони.
       </p>
 
-      <div
-        ref={containerRef}
-        role="application"
-        aria-label={`Карта: ${title}`}
-        className="mt-4 h-[320px] w-full overflow-hidden rounded-[12px] bg-[var(--uyut-map)]"
-      />
+      {failed ? (
+        <p className="mt-4 text-[15px] leading-6 text-[var(--uyut-secondary)]">
+          Карта не загрузилась.
+        </p>
+      ) : (
+        <div
+          ref={containerRef}
+          role="application"
+          aria-label={`Карта: ${title}`}
+          className="mt-4 h-[320px] w-full overflow-hidden rounded-[12px] bg-[var(--uyut-map)]"
+        />
+      )}
     </div>
   );
 }

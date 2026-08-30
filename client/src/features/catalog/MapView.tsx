@@ -7,9 +7,10 @@ import {
   useState,
 } from "react";
 
-import "leaflet/dist/leaflet.css";
-
+import { loadYandexMaps } from "@/lib/yandexMaps";
 import type { Listing } from "@/types/listing";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface MapViewProps {
   listings: Listing[];
@@ -18,27 +19,22 @@ interface MapViewProps {
   onSelect: (id: number) => void;
 }
 
-// Leaflet трогает window прямо при импорте, поэтому подгружаем его внутри эффекта,
-// а не сверху файла: иначе страница падает на серверном рендере Next.
-type Leaflet = typeof import("leaflet");
-type LeafletMap = import("leaflet").Map;
-type LeafletMarker = import("leaflet").Marker;
-
 const SPB_CENTER: [number, number] = [
   59.94, 30.32,
 ];
 
-function pinHtml(
-  price: number,
-  active: boolean,
-) {
-  const label = `${price.toLocaleString("ru-RU")} ₽`;
+function pinTemplate(active: boolean) {
+  const colors = active
+    ? "background:#2a6f5b;color:#ffffff"
+    : "background:#ffffff;color:#1c1b19";
 
-  return `<span class="${
-    active
-      ? "bg-[#2a6f5b] text-white"
-      : "bg-white text-[#1c1b19]"
-  } inline-flex h-[34px] cursor-pointer items-center rounded-[20px] px-3.5 text-[13px] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.16)] whitespace-nowrap">${label}</span>`;
+  return (
+    '<span style="' +
+    colors +
+    ';display:inline-flex;align-items:center;height:34px;padding:0 14px;' +
+    'border-radius:20px;font:600 13px/1 Inter,system-ui,sans-serif;white-space:nowrap;' +
+    'box-shadow:0 2px 6px rgba(0,0,0,0.16);cursor:pointer">$[properties.iconContent]</span>'
+  );
 }
 
 export default function MapView({
@@ -49,143 +45,162 @@ export default function MapView({
 }: MapViewProps) {
   const containerRef =
     useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
-  const leafletRef = useRef<Leaflet | null>(
-    null,
+  const mapRef = useRef<any>(null);
+  const ymapsRef = useRef<any>(null);
+  const placemarksRef = useRef(
+    new Map<number, any>(),
   );
-  const markersRef = useRef(
-    new Map<number, LeafletMarker>(),
-  );
+  const layoutsRef = useRef<{
+    normal: any;
+    active: any;
+  } | null>(null);
 
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    // Копию держим локально: к моменту очистки markersRef.current уже другой.
-    const markers = markersRef.current;
+    const placemarks = placemarksRef.current;
 
-    async function init() {
-      const L = (await import("leaflet"))
-        .default;
+    loadYandexMaps()
+      .then((ymaps) => {
+        if (
+          cancelled ||
+          !containerRef.current ||
+          mapRef.current
+        ) {
+          return;
+        }
 
-      if (
-        cancelled ||
-        !containerRef.current ||
-        mapRef.current
-      ) {
-        return;
-      }
+        ymapsRef.current = ymaps;
 
-      leafletRef.current = L;
+        layoutsRef.current = {
+          normal:
+            ymaps.templateLayoutFactory.createClass(
+              pinTemplate(false),
+            ),
+          active:
+            ymaps.templateLayoutFactory.createClass(
+              pinTemplate(true),
+            ),
+        };
 
-      const map = L.map(containerRef.current, {
-        center: SPB_CENTER,
-        zoom: 11,
-        zoomControl: true,
+        mapRef.current = new ymaps.Map(
+          containerRef.current,
+          {
+            center: SPB_CENTER,
+            zoom: 11,
+            controls: ["zoomControl"],
+          },
+          {
+            suppressMapOpenBlock: true,
+          },
+        );
+
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailed(true);
+        }
       });
-
-      L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          maxZoom: 19,
-          attribution:
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        },
-      ).addTo(map);
-
-      mapRef.current = map;
-      setReady(true);
-    }
-
-    init();
 
     return () => {
       cancelled = true;
-      mapRef.current?.remove();
+      mapRef.current?.destroy();
       mapRef.current = null;
-      markers.clear();
+      placemarks.clear();
       setReady(false);
     };
   }, []);
 
-  const makeIcon = useCallback(
-    (listing: Listing, active: boolean) => {
-      const L = leafletRef.current;
+  const applyLayout = useCallback(
+    (placemark: any, active: boolean) => {
+      const layouts = layoutsRef.current;
 
-      if (!L) {
-        return undefined;
+      if (!layouts) {
+        return;
       }
 
-      return L.divIcon({
-        className: "uyut-pin",
-        html: pinHtml(
-          listing.pricePerNight,
-          active,
-        ),
-        iconSize: undefined,
-        iconAnchor: [40, 17],
+      placemark.options.set({
+        iconLayout: active
+          ? layouts.active
+          : layouts.normal,
+        zIndex: active ? 1000 : 100,
       });
     },
     [],
   );
 
   // Метки пересобираем только когда сменился список, а не на каждый ререндер:
-  // иначе карта моргает и сбрасывает позицию.
+  // иначе карта моргает и теряет позицию.
   useEffect(() => {
-    const L = leafletRef.current;
+    const ymaps = ymapsRef.current;
     const map = mapRef.current;
+    const layouts = layoutsRef.current;
 
-    if (!ready || !L || !map) {
+    if (!ready || !ymaps || !map || !layouts) {
       return;
     }
 
-    markersRef.current.forEach((marker) =>
-      marker.remove(),
-    );
-    markersRef.current.clear();
+    map.geoObjects.removeAll();
+    placemarksRef.current.clear();
 
     listings.forEach((listing) => {
-      const icon = makeIcon(listing, false);
-
-      if (!icon) {
-        return;
-      }
-
-      const marker = L.marker(
+      const placemark = new ymaps.Placemark(
         [listing.lat, listing.lng],
-        { icon },
-      )
-        .addTo(map)
-        .bindPopup(
-          `<strong>${listing.title}</strong><br>${listing.district} район`,
-        );
-
-      marker.on("mouseover", () =>
-        onHover(listing.id),
+        {
+          iconContent: `${listing.pricePerNight.toLocaleString("ru-RU")} ₽`,
+          hintContent: listing.title,
+        },
+        {
+          iconLayout: layouts.normal,
+          iconShape: {
+            type: "Rectangle",
+            coordinates: [
+              [-45, -17],
+              [45, 17],
+            ],
+          },
+          zIndex: 100,
+        },
       );
-      marker.on("mouseout", () =>
+
+      placemark.events.add(
+        "mouseenter",
+        () => onHover(listing.id),
+      );
+
+      placemark.events.add("mouseleave", () =>
         onHover(null),
       );
-      marker.on("click", () =>
+
+      placemark.events.add("click", () =>
         onSelect(listing.id),
       );
 
-      markersRef.current.set(
+      map.geoObjects.add(placemark);
+      placemarksRef.current.set(
         listing.id,
-        marker,
+        placemark,
       );
     });
 
     if (listings.length > 0) {
-      map.fitBounds(
-        listings.map((listing) => [
-          listing.lat,
-          listing.lng,
-        ]),
-        { padding: [48, 48], maxZoom: 14 },
+      map.setBounds(
+        map.geoObjects.getBounds(),
+        {
+          checkZoomRange: true,
+          zoomMargin: 48,
+        },
       );
     }
-  }, [listings, ready, makeIcon, onHover, onSelect]);
+  }, [
+    listings,
+    ready,
+    onHover,
+    onSelect,
+  ]);
 
   // Подсветка метки при наведении на карточку в списке.
   useEffect(() => {
@@ -193,30 +208,26 @@ export default function MapView({
       return;
     }
 
-    markersRef.current.forEach(
-      (marker, id) => {
-        const listing = listings.find(
-          (item) => item.id === id,
-        );
-
-        if (!listing) {
-          return;
-        }
-
-        const icon = makeIcon(
-          listing,
+    placemarksRef.current.forEach(
+      (placemark, id) => {
+        applyLayout(
+          placemark,
           id === hoveredId,
         );
-
-        if (icon) {
-          marker.setIcon(icon);
-          marker.setZIndexOffset(
-            id === hoveredId ? 1000 : 0,
-          );
-        }
       },
     );
-  }, [hoveredId, listings, ready, makeIcon]);
+  }, [hoveredId, ready, applyLayout]);
+
+  if (failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-[var(--uyut-map)] px-6 text-center">
+        <p className="m-0 max-w-[280px] text-[14px] leading-5 text-[var(--uyut-secondary)]">
+          Карта не загрузилась. Список объявлений
+          рядом работает как обычно.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
