@@ -14,6 +14,8 @@ import {
   ApiError,
 } from "@/lib/api";
 import { plural } from "@/lib/plural";
+import ListingMap from "@/features/listing/ListingMap";
+import ReviewsBlock from "@/features/listing/ReviewsBlock";
 import {
   amenityLabels,
   housingTypeLabels,
@@ -228,6 +230,15 @@ export default function ListingPage() {
                   </ul>
                 </div>
               )}
+
+              <ListingMap
+                lat={listing.lat}
+                lng={listing.lng}
+                title={listing.title}
+                district={listing.district}
+              />
+
+              <ReviewsBlock listingId={listing.id} />
             </div>
           </section>
 

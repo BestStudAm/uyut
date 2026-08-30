@@ -23,6 +23,12 @@ interface Booking {
   checkOut: string;
   guests: number;
   status: "active" | "cancelled";
+  // Стоимость зафиксирована при оформлении: если владелец потом поднимет цену,
+  // сумма в старой брони не должна измениться.
+  nights: number;
+  pricePerNight: number;
+  serviceFee: number;
+  total: number;
 }
 
 interface BookingsResponse {
@@ -196,6 +202,15 @@ function BookingCard({ booking, onCancel }: { booking: BookingWithListing; onCan
         {booking.listing && <p className="mt-1 m-0 text-[14px] text-[var(--uyut-secondary)]">{booking.listing.district}, {booking.listing.city}</p>}
         <p className="mt-4 m-0 text-[15px] text-[#1c1b19]">{formatDate(booking.checkIn)} — {formatDate(booking.checkOut)}</p>
         <p className="mt-1 m-0 text-[14px] text-[var(--uyut-secondary)]">{booking.guests} {plural(booking.guests, ["гость", "гостя", "гостей"])}</p>
+
+        {booking.total > 0 && (
+          <p className="mt-3 m-0 text-[15px] text-[#1c1b19]">
+            <span className="font-semibold">{booking.total.toLocaleString("ru-RU")} ₽</span>
+            <span className="text-[14px] text-[var(--uyut-secondary)]">
+              {" "}за {booking.nights} {plural(booking.nights, ["ночь", "ночи", "ночей"])}, включая сбор {booking.serviceFee.toLocaleString("ru-RU")} ₽
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">

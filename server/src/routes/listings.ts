@@ -4,6 +4,7 @@ import {
   findListingById,
   getListings,
 } from "../data/listings.js";
+import { findReviewsByListing } from "../data/reviews.js";
 import {
   filterListings,
   type CatalogQuery,
@@ -110,6 +111,21 @@ router.get("/", (req, res) => {
     query,
   ),
 );
+});
+
+router.get("/:id/reviews", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({
+      error: "INVALID_ID",
+      message: "Некорректный идентификатор",
+    });
+
+    return;
+  }
+
+  res.json({ items: findReviewsByListing(id) });
 });
 
 router.get("/:id", (req, res) => {

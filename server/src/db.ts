@@ -136,5 +136,111 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_bookings_listing_id
     ON bookings(listing_id);
+
+  CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    listing_id INTEGER NOT NULL,
+
+    author_name TEXT NOT NULL,
+
+    rating INTEGER NOT NULL,
+
+    text TEXT NOT NULL,
+
+    created_at TEXT NOT NULL
+      DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (listing_id)
+      REFERENCES listings(id)
+      ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_reviews_listing_id
+    ON reviews(listing_id);
+`);
+
+// CREATE TABLE IF NOT EXISTS не добавляет колонки в уже существующую таблицу,
+// поэтому недостающие досыпаем вручную. У тех, кто уже запускал проект,
+// база лежит на диске со старой схемой.
+function addColumnIfMissing(
+  table: string,
+  column: string,
+  definition: string,
+) {
+  const columns = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all() as { name: string }[];
+
+  const exists = columns.some(
+    (item) => item.name === column,
+  );
+
+  if (!exists) {
+    db.exec(
+      `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`,
+    );
+  }
+}
+
+// Стоимость фиксируем в самой брони. Если считать её каждый раз от текущей цены
+// объявления, то владелец поднимет цену — и старые брони задним числом подорожают.
+addColumnIfMissing(
+  "bookings",
+  "nights",
+  "INTEGER NOT NULL DEFAULT 0",
+);
+
+addColumnIfMissing(
+  "bookings",
+  "price_per_night",
+  "INTEGER NOT NULL DEFAULT 0",
+);
+
+addColumnIfMissing(
+  "bookings",
+  "service_fee",
+  "INTEGER NOT NULL DEFAULT 0",
+);
+
+addColumnIfMissing(
+  "bookings",
+  "total",
+  "INTEGER NOT NULL DEFAULT 0",
+);
+
+// Брони, оформленные до появления этих полей, остались с нулями. Считаем им
+// стоимость один раз по текущей цене объявления — иначе в кабинете у них пусто.
+db.exec(`
+  UPDATE bookings
+  SET
+    nights = MAX(
+      1,
+      CAST(
+        julianday(check_out) - julianday(check_in)
+        AS INTEGER
+      )
+    ),
+    price_per_night = COALESCE(
+      (
+        SELECT price_per_night
+        FROM listings
+        WHERE listings.id = bookings.listing_id
+      ),
+      0
+    )
+  WHERE total = 0;
+
+  UPDATE bookings
+  SET
+    service_fee = CAST(
+      ROUND(nights * price_per_night * 7.0 / 100)
+      AS INTEGER
+    ),
+    total = nights * price_per_night + CAST(
+      ROUND(nights * price_per_night * 7.0 / 100)
+      AS INTEGER
+    )
+  WHERE total = 0;
 `);
 

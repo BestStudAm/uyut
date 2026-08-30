@@ -6,6 +6,7 @@ import listingsRouter from "./routes/listings.js";
 import myListingsRouter from "./routes/myListings.js";
 
 import { ensureDemoUser } from "./data/users.js";
+import { ensureReviewsSeeded } from "./data/reviews.js";
 
 import favoritesRouter from "./routes/favorites.js";
 import bookingsRouter from "./routes/bookings.js";
@@ -35,6 +36,9 @@ app.get("/api/health", (_req, res) => {
 // Создаём тестового пользователя,
 // если его ещё нет в SQLite.
 ensureDemoUser();
+
+// Отзывы приходят сидером: по плану они только на чтение.
+ensureReviewsSeeded();
 
 app.use(
   "/api/auth",
