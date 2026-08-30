@@ -9,9 +9,26 @@
 Подробное описание, границы MVP и распределение работ — в [docs/plan.md](docs/plan.md).
 Что и когда менялось — в [docs/changelog.md](docs/changelog.md).
 
+## Стек
+
+**Клиент:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4,
+Яндекс.Карты JS API 2.1.
+
+**Сервер:** Node.js 22 LTS, Express 5, TypeScript, SQLite через better-sqlite3
+(обычный SQL, без ORM), bcryptjs для паролей.
+
+**Проверки:** Vitest — 26 тестов, 6 на клиенте и 20 на сервере. ESLint,
+проверка типов `tsc --noEmit`.
+
+Почему выбрано именно это, от чего отказались и какие есть ограничения —
+в [docs/stack.md](docs/stack.md).
+
 ## Быстрый старт
 
-Нужен Node 20 или новее. Зависимости ставятся в двух местах отдельно, workspaces не используем.
+Нужен **Node.js 22 LTS**. На 24-й ветке не собирается `better-sqlite3`: готовых
+бинарников под неё ещё нет, и npm пытается компилировать пакет из исходников.
+
+Зависимости ставятся в двух местах отдельно, workspaces не используем.
 
 ```bash
 npm --prefix server install
